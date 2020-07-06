@@ -27,6 +27,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <iostream>
+#include <fstream>
+#include "time.h"
+#include <string>
+
 #include <boost/asio.hpp>
 
 #include "liboculus/SonarConfiguration.h"
@@ -63,7 +68,7 @@ namespace liboculus {
 
     _sfm.masterMode      = OCULUS_HIGH_FREQ;
 
-    _sfm.networkSpeed = 0xff;
+    _sfm.networkSpeed    = 0xff;
 
     // Initial values
     _sfm.gammaCorrection = 127; //gamma;
@@ -135,9 +140,34 @@ namespace liboculus {
     sendCallback();
   }
 
+  #define MAX_DATE 30
+  static std::string get_date_filename(void)
+  {
+     time_t now;
+     char the_date[MAX_DATE];
+
+     the_date[0] = '\0';
+
+     now = time(NULL);
+
+     if (now != -1)
+     {
+        strftime(the_date, MAX_DATE, "/tmp/%m%d%Y_%H%M%S.bin", gmtime(&now));
+     }
+
+     return std::string(the_date);
+  }
+
   void SonarConfiguration::serializeTo( boost::asio::streambuf &stream ) const
   {
-    stream.sputn( (char *)&_sfm, sizeof(OculusSimpleFireMessage));
+
+    // std::cout << "Freq mode: " << std::hex << (int)_sfm.masterMode << std::endl;
+    // std::cout << "Ping rate: " << std::hex << (int)_sfm.pingRate << std::endl;
+
+    std::ofstream outFile( get_date_filename(), std::ios::out | std::ios::binary);
+    outFile.write( reinterpret_cast<const char*>(&_sfm), sizeof(OculusSimpleFireMessage) );
+
+    stream.sputn( reinterpret_cast<const char*>(&_sfm), sizeof(OculusSimpleFireMessage) );
   }
 
 }

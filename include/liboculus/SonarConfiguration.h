@@ -70,8 +70,9 @@ public:
 
   void setFreqMode(OculusFreqMode input);
 
-private:
+  const OculusSimpleFireMessage &sfm() const { return _sfm; }
 
+private:
 
   bool _postponeCallback;
 
