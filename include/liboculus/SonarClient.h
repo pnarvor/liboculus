@@ -59,6 +59,9 @@ namespace liboculus {
 
     void receiveStatus( const SonarStatus & status );
 
+    // Handle dummy messages internally (don't pass to user)
+    void dummyMessageCallback();
+
   private:
 
     std::string _ipAddr;

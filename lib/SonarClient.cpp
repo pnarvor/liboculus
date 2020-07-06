@@ -41,6 +41,8 @@ namespace liboculus {
 
     _statusRx.setCallback( std::bind( &SonarClient::receiveStatus, this, std::placeholders::_1 ));
 
+    _dataRx.setDummyMessageCallback( std::bind( &SonarClient::dummyMessageCallback, this ));
+
     if( ! ipAddr.empty() && ipAddr != "auto" ) {
       LOG(INFO) << "Connecting to sonar with IP address " << ipAddr;
       auto addr( boost::asio::ip::address_v4::from_string( ipAddr ) );
@@ -80,6 +82,10 @@ namespace liboculus {
       LOG(INFO) << "Using sonar detected at " << addr;
       _dataRx.connect( addr, _config );
     }
+  }
+
+  void SonarClient::dummyMessageCallback() {
+      _config.sendCallback();
   }
 
 }

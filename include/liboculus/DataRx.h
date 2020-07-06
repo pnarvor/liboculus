@@ -70,6 +70,9 @@ public:
 
   typedef std::function< void( const SimplePingResult & ) > SimplePingCallback;
   void setCallback( SimplePingCallback callback );
+
+  typedef std::function< void(void) > DummyMessageCallback;
+  void setDummyMessageCallback( DummyMessageCallback callback );
 private:
 
 
@@ -90,6 +93,7 @@ private:
 //  boost::asio::steady_timer _writeTimer;
 
   SimplePingCallback _simplePingCallback;
+  DummyMessageCallback _dummyMessageCallback;
 
 };
 

@@ -77,6 +77,11 @@ namespace liboculus {
     _simplePingCallback = callback;
   }
 
+  void DataRx::setDummyMessageCallback( DummyMessageCallback callback ) {
+    _dummyMessageCallback = callback;
+  }
+
+
   void DataRx::connect( uint32_t ip,  SonarConfiguration &config ) {
     connect(boost::asio::ip::address_v4( ip ), config);
   }
@@ -102,13 +107,11 @@ namespace liboculus {
 
   void DataRx::onConnect(const boost::system::error_code& ec, SonarConfiguration &config ) {
     if (!ec) {
+
       scheduleHeaderRead();
 
       // Send one SonarConfiguration immediately.
-      boost::asio::streambuf buf;
-      config.serializeTo( buf );
-      auto result = _socket.send( buf.data() );
-      LOG(DEBUG) << "Sent " << result << " bytes to sonar";
+      onSonarConfigurationChanged( config );
 
     } else {
       LOG(WARNING) << "Error on connect: " << ec.message();
@@ -153,12 +156,12 @@ namespace liboculus {
               LOG(WARNING) << "Unable to expand for payload";
             }
 
-            // Rely on ref-counting of shared_ptr to clean up any dropped packets
-            //shared_ptr<SimplePingResult> ping( new SimplePingResult( _hdr ) );
-
             // Read the remainder of the packet
             auto b = boost::asio::buffer( hdr.payloadPtr(), hdr.alignedPayloadSize() );
             boost::asio::async_read( _socket, b, boost::bind(&DataRx::readSimplePingResult, this, hdr, _1, _2));
+
+            // Return early; don't want to drop to scheduleHeaderRead() at end of function
+            return;
 
           } else if ( hdr.msgId() == messageLogs && hdr.payloadSize() > 0 ) {
 
@@ -173,25 +176,30 @@ namespace liboculus {
               std::string s( (std::istreambuf_iterator<char>(&junkBuffer)), std::istreambuf_iterator<char>() );
               LOG(DEBUG) << s;
 
-              scheduleHeaderRead();
-            }
-            else
-            {
+              //scheduleHeaderRead();
+            } else  {
               LOG(WARNING) << "Error on receive of payload for log message: " << ec.message();
             }
 
+          } else if( hdr.msgId() == messageDummy ) {
+
+            // If received a messageDummy, send another config message
+            LOG(DEBUG) << "Received dummy message, trying to re-send sonar config again..";
+            if( _dummyMessageCallback ) _dummyMessageCallback();
+
+            //scheduleHeaderRead();
+
           } else {
-            // Drop the rest of the message
+            // If we received a value other than the size of the MessageHeader,
+            // drop the rest of the message
 
             const size_t discardSz = hdr.alignedPayloadSize();
 
             if ( discardSz == 0 ) {
-              LOG(INFO) << "Unknown message ID " << hdr.msgId();
-              scheduleHeaderRead();
-            }
-            else
-            {
-              LOG(INFO) << "Unknown message ID " << hdr.msgId() << ", need to drain an additional " << discardSz << " bytes";
+              LOG(INFO) << "Received unknown message ID " << hdr.msgId();
+              //scheduleHeaderRead();
+            } else {
+              LOG(INFO) << "Received unknown message ID " << hdr.msgId() << ", need to drain an additional " << discardSz << " bytes";
 
               std::vector<char> junkBuffer(discardSz);
 
@@ -200,7 +208,7 @@ namespace liboculus {
                   {
                     LOG(DEBUG) << "Read and discarded " << bytes_recvd;
                     if (!ec && bytes_recvd > 0) {
-                      scheduleHeaderRead();
+                      ;
                     } else {
                       LOG(WARNING) << "Error on receive of add'l data: " << ec.message();
                     }
@@ -224,6 +232,9 @@ namespace liboculus {
     } else {
       LOG(WARNING) << "Error on receive of header: " << ec.message();
     }
+
+    // Any paths that lead here should leave the system in a state to receive another header
+    scheduleHeaderRead();
   }
 
   void DataRx::readSimplePingResult(  MessageHeader hdr,
