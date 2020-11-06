@@ -1,107 +1,47 @@
 cmake_minimum_required(VERSION 3.5)
-project(liboculus)
+project(liboculus VERSION 0.1)
 
-if( FIPS_CONFIG AND NOT FIPS_IMPORT )
-  get_filename_component(FIPS_ROOT_DIR "../fips" ABSOLUTE)
-  include("${FIPS_ROOT_DIR}/cmake/fips.cmake")
+find_package(g3log REQUIRED)
+find_package(active_object REQUIRED)
+# find_package(Boost
 
-  fips_setup()
-else()
-  find_package(catkin QUIET)
-endif()
+list(APPEND liboculus_headers
+    include/liboculus/BearingData.h
+    include/liboculus/DataRx.h
+    include/liboculus/DataTypes.h
+    include/liboculus/ImageData.h
+    include/liboculus/IoServiceThread.h
+    include/liboculus/SimplePingResult.h
+    include/liboculus/SonarClient.h
+    include/liboculus/SonarConfiguration.h
+    include/liboculus/SonarPlayer.h
+    include/liboculus/SonarStatus.h
+    include/liboculus/StatusRx.h
+)
 
-# == Code common to all builds =======================================
+add_library(liboculus SHARED
+    lib/DataRx.cpp
+    lib/SimplePingResult.cpp
+    lib/SonarClient.cpp
+    lib/SonarConfiguration.cpp
+    lib/SonarPlayer.cpp
+    lib/SonarStatus.cpp
+    lib/StatusRx.cpp
+)
+set_target_properties(liboculus PROPERTIES
+    PUBLIC_HEADER "${liboculus_headers}"
+)
+target_include_directories(liboculus PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/liboculus/thirdparty>
+    $<INSTALL_INTERFACE:include/libocolus/thirdparty>
+)
+target_link_libraries(liboculus PUBLIC
+    g3log
+    active_object
+)
 
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
-
-## C++ flags applied to all builds
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-
-find_package( Boost REQUIRED COMPONENTS system )
-
-# Actually not using full SDK, just the header files
-# in thirdparty/Oculus
-#find_package( OculusSDK REQUIRED )
-
-if (FIPS_CONFIG)
-  #== fips-specific section ==========================================
-
-  ## Set global include paths
-  fips_include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty
-  )
-
-  ## Verbose output about ASIO handlers
-  #add_definitions( -DBOOST_ASIO_ENABLE_HANDLER_TRACKING )
-
-
-  fips_add_subdirectory("lib/")
-
-  if( NOT FIPS_IMPORT )
-  add_subdirectory("tools/")
-
-  if( FIPS_UNITTESTS )
-  add_subdirectory( test/ )
-  endif()
-
-  fips_finish()
-  endif()
-
-else()
-  # == ROS / Catkin-specific section =================================
-  project(liboculus)
-
-  find_package(catkin REQUIRED
-          #cmake_modules
-          active_object REQUIRED
-          g3log_catkin )
-
-  catkin_package(
-            CATKIN_DEPENDS active_object g3log_catkin
-            INCLUDE_DIRS include thirdparty
-            LIBRARIES liboculus_LIB )
+add_subdirectory(tools)
 
 
-  ## C++ flags applied to all builds
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-
-  include_directories(
-              include
-              thirdparty
-              ${catkin_INCLUDE_DIRS} )
-
-  file(GLOB oculus_SRCS
-              lib/*cpp )
-
-
-  add_library(liboculus_LIB ${oculus_SRCS})
-  target_link_libraries(liboculus_LIB ${catkin_LIBRARIES})
-
-  install(TARGETS liboculus_LIB
-              ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-              LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-              RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION})
-
-  ## Install headers
-  install(DIRECTORY  include/${PROJECT_NAME}/ thirdparty/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
-              PATTERN ".git" EXCLUDE)
-
-  if (CATKIN_ENABLE_TESTING)
-    add_definitions(-DTEST_DATA_PATH="${CMAKE_CURRENT_SOURCE_DIR}/test/data")
-    include_directories( test/data/ )
-
-    file(GLOB oculus_test_SRCS
-              test/unit/*cpp )
-              
-    catkin_add_gtest(oculus_test ${oculus_test_SRCS})
-
-    target_link_libraries(oculus_test ${catkin_LIBRARIES}
-              liboculus_LIB
-              Boost::system )
-  endif()
-
-
-endif()

@@ -9,7 +9,7 @@ using std::string;
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 
-#include <libg3logger/g3logger.h>
+//#include <libg3logger/g3logger.h>
 #include <CLI/CLI.hpp>
 
 #include "liboculus/SonarClient.h"
@@ -35,7 +35,7 @@ void signalHandler( int signo ) {
 
 int main( int argc, char **argv ) {
 
-  libg3logger::G3Logger logger("ocClient");
+  //libg3logger::G3Logger logger("ocClient");
 
   CLI::App app{"Simple Oculus Sonar app"};
 
@@ -58,9 +58,9 @@ int main( int argc, char **argv ) {
   CLI11_PARSE(app, argc, argv);
 
   if( verbosity == 1 ) {
-    logger.setLevel( INFO );
+    //logger.setLevel( INFO );
   } else if (verbosity > 1 ) {
-    logger.setLevel( DEBUG );
+    //logger.setLevel( DEBUG );
   }
 
   ofstream output;

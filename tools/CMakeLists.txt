@@ -1,12 +1,12 @@
-fips_begin_app( oc_client cmdline )
-  fips_files(
+cmake_minimum_required(VERSION 3.10)
+project(liboculus_tool VERSION 0.1)
+
+find_package(CLI11 REQUIRED)
+
+add_executable(oculus_client
     oculus_client.cpp
-  )
-
-  fips_deps( oculus activeobject  )
-
-  fips_include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}
-  )
-
-fips_end_app()
+)
+target_link_libraries(oculus_client PRIVATE
+    liboculus
+    CLI11::CLI11
+)
